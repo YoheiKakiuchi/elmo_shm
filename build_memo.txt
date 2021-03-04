@@ -1,0 +1,26 @@
+#!/bin/bash
+###
+
+if [ ! -e SOEM ]; then
+   git clone https://github.com/OpenEtherCATsociety/SOEM.git
+   cd SOEM
+   # use fixed version
+   git checkout -b v1.4.0 v1.4.0
+   #
+   mkdir build; cd build
+   cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../../soem_lib -DCMAKE_BUILD_TYPE=Release ..
+   make
+   make install
+   cd ../..
+fi
+
+## current directory to elmo_shm
+if [ ! -e build ]; then
+   rm -rf build;
+fi
+
+mkdir build; cd build
+cmake ..;
+make ## build elmo_shm
+
+## sudo elmo_shm eth0
