@@ -27,6 +27,10 @@ SOFTWARE.
 #include <inttypes.h>
 #include <pthread.h>
 
+// for parsing option
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
+
 #include "realtime_task.h"    // elmo_shm/include
 #include "elmo_common.h"      // elmo_shm/include
 #include "driver_parameter.h" // elmo_shm/include
@@ -178,7 +182,7 @@ void *set_shared_memory(key_t _key, size_t _size)
   return ptr;
 }
 
-boolean initialize_ethercat (char *ifname)
+boolean initialize_ethercat (const char *ifname)
 {
   /* initialise SOEM, bind socket to ifname */
   if ( !ec_init(ifname) ) {
@@ -197,7 +201,7 @@ boolean initialize_ethercat (char *ifname)
   return true;
 }
 
-void ethercat_loop (char *ifname)
+void ethercat_loop (const char *ifname)
 {
   bool ethercat_open = true;
   if (!initialize_ethercat(ifname)) {
@@ -866,10 +870,11 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
   } /* while(1) */
 }
 
+std::string logfilename("shm_log");
+
 void cchandler(int) {
   fprintf(stderr, "exit\n");
-  std::string nm("shm_log");
-  shm_log.save(nm);
+  shm_log.save(logfilename);
   exit(0);
 }
 
@@ -877,56 +882,97 @@ int main(int argc, char *argv[])
 {
    fprintf(stderr, "JSK: elmo_shm / SOEM (Simple Open EtherCAT Master)\n");
 
+   boost::program_options::options_description opt("Options");
+   opt.add_options()
+     ("help,h", "Show help.")
+     ("nodisplay,n", "without display mode")
+     ("testmode,t", "test without controller")
+     ("calibration,c", "calibration mode")
+     ("startlog,l", "start log")
+     ("device,d", boost::program_options::value<std::string>(), "device name")
+     ("parameterfile,f", boost::program_options::value<std::string>(), "parameter file name")
+     ("logfile,L", boost::program_options::value<std::string>(), "log file name");
+   boost::program_options::variables_map argmap;
+   boost::program_options::store(boost::program_options::parse_command_line(argc, argv, opt), argmap);
+   boost::program_options::notify(argmap);
+
+   std::string device("eth0");
+   std::string pfname("../driver_settings.yaml");
+   bool start_display = true;
+
+   if( argmap.count( "help" ) ) {
+     std::cerr << opt << std::endl;
+     return 1;
+   }
+   if( argmap.count( "nodisplay" ) ) {
+     start_display = false;
+   }
+   if( argmap.count( "testmode" ) ) {
+     //std::cerr << "testmode" << std::endl;
+   }
+   if( argmap.count( "calibration" ) ) {
+     //std::cerr << "calibration" << std::endl;
+     calibration_mode = true;
+   }
+   if( argmap.count( "startlog" ) ) {
+     //std::cerr << "startlog" << std::endl;
+   }
+   if( argmap.count( "device" ) ) {
+    std::string str(argmap["device"].as<std::string>());
+    device = str;
+   }
+   if( argmap.count( "parameterfile" ) ) {
+    std::string str(argmap["parameterfile"].as<std::string>());
+    pfname = str;
+   }
+   if( argmap.count( "logfile" ) ) {
+    std::string str(argmap["logfile"].as<std::string>());
+    logfilename = str;
+   }
+
    // read settings
-   std::string fname = "../driver_settings.yaml";
-   bool ret = parse_driver_parameter_yaml(fname, drv_params);
+   bool ret = parse_driver_parameter_yaml(pfname, drv_params);
 
    signal( SIGINT, &cchandler );
 
-   if (argc > 1)  {
-     shm = (servo_shm *) set_shared_memory(5555, sizeof(servo_shm));
-     if (shm == NULL) {
-       return -1;
-     }
-     shm->disable_alert_on_servo_on = 0;
-     for (int i=0; i<MAX_JOINT_NUM; i++) {
-       shm->servo_state[0][i] = 0x00;
-       shm->servo_state[1][i] = 0x00;
-       shm->hole_status[0][i] = 0x00;
-       shm->motor_num[i] = 0;
-       shm->servo_on[i]  = 0;
-       shm->servo_off[i] = 0;
-       shm->is_servo_on[i]  = 0;
-       shm->torque0[i]   = 0;
-       shm->loopback[i]  = 0;
-       //shm->joint_enable[i] = 1;
-       shm->joint_offset[i] = 0;
+   shm = (servo_shm *) set_shared_memory(5555, sizeof(servo_shm));
+   if (shm == NULL) {
+     return -1;
+   }
+   shm->disable_alert_on_servo_on = 0;
+   for (int i=0; i<MAX_JOINT_NUM; i++) {
+     shm->servo_state[0][i] = 0x00;
+     shm->servo_state[1][i] = 0x00;
+     shm->hole_status[0][i] = 0x00;
+     shm->motor_num[i] = 0;
+     shm->servo_on[i]  = 0;
+     shm->servo_off[i] = 0;
+     shm->is_servo_on[i]  = 0;
+     shm->torque0[i]   = 0;
+     shm->loopback[i]  = 0;
+     //shm->joint_enable[i] = 1;
+     shm->joint_offset[i] = 0;
 
-       //
-       shm->ref_angle[i] = 0.0;
-       shm->ref_torque[i] = 0.0;
-       shm->cur_vel[i] = 0.0;
-       shm->abs_vel[i] = 0.0;
-       shm->pgain[i] = 0.0;
-       shm->dgain[i] = 0.0;
-       shm->motor_temp[0][i] = 0.0;
-       shm->motor_current[0][i] = 0.0;
-       shm->motor_output[0][i] = 0.0;
-     }
+     //
+     shm->ref_angle[i] = 0.0;
+     shm->ref_torque[i] = 0.0;
+     shm->cur_vel[i] = 0.0;
+     shm->abs_vel[i] = 0.0;
+     shm->pgain[i] = 0.0;
+     shm->dgain[i] = 0.0;
+     shm->motor_temp[0][i] = 0.0;
+     shm->motor_current[0][i] = 0.0;
+     shm->motor_output[0][i] = 0.0;
+   }
 
-     if (argc > 2) {
-       std::string argv_2(argv[2]);
-       if (argv_2 == "-calib") {
-         calibration_mode = true;
-       }
-     }
 
-     if (calibration_mode) {
-       ethercat_loop(argv[1]);
-     } else {
-       /* create thread to handle slave error handling in OP */
-       osal_thread_create(&thread1, 128000, (void *) &ecatcheck, (void*) &ctime);
+   if (calibration_mode) {
+     ethercat_loop(device.c_str());
+   } else {
+     /* create thread to handle slave error handling in OP */
+     osal_thread_create(&thread1, 128000, (void *) &ecatcheck, (void*) &ctime);
 
+     if (start_display) {
        // display thread
        pthread_t display_thread;
        long d_args[3];
@@ -938,14 +984,13 @@ int main(int argc, char *argv[])
          fprintf(stderr, "pthread_create (display) was filed");
          exit(1);
        }
-
-       create_logger();
-
-       /* start cyclic part */
-       ethercat_loop(argv[1]);
      }
-   } else {
-     printf("Usage: t ifname1\n( ifname = eth0 for example )\n");
+
+     create_logger();
+
+     /* start cyclic part */
+     ethercat_loop(device.c_str());
    }
+
    return (0);
 }
