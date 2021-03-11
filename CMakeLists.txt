@@ -8,7 +8,9 @@ find_package(Boost REQUIRED
              COMPONENTS program_options)
 ##message("## Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 ##message("## Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
-
+## TODO find_package(yaml-cpp)
+## TODO find_package(ncurses)
+## TODO tinfo-dev??
 set(SOURCES src/elmo_shm.cpp src/elmo_common.cpp src/display_shm.cpp src/list_display.cpp src/driver_parameter.cpp)
 set(CMAKE_C_FLAGS "-O3 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare -std=c++11")
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare -std=c++11")

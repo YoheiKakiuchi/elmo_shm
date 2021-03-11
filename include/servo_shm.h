@@ -2,7 +2,8 @@
 #define __SERVO_SHM_H__
 #include <pthread.h>
 
-#define MAX_JOINT_NUM 32
+//#define MAX_JOINT_NUM 32
+#define MAX_JOINT_NUM 64
 #define MAX_MOTOR_NUM 2
 #define MAX_IMU_NUM 2
 #define MAX_FSENSOR_NUM 4

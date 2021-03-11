@@ -112,14 +112,15 @@ OSAL_THREAD_HANDLE thread1;
 int expectedWKC;
 
 // TODO: should be thread_safe
-boolean needlf;
+bool needlf;
 volatile int wkc;
-boolean inOP = false;
+bool inOP = false;
 uint8 currentgroup = 0;
 
 //// global variables
 volatile int stop_flag = 0;
-boolean calibration_mode = false;
+bool calibration_mode = false;
+bool use_hrpsys = true;
 std::vector<driver_parameter> drv_params;
 long zero_count = 0;
 
@@ -182,7 +183,7 @@ void *set_shared_memory(key_t _key, size_t _size)
   return ptr;
 }
 
-boolean initialize_ethercat (const char *ifname)
+bool initialize_ethercat (const char *ifname)
 {
   /* initialise SOEM, bind socket to ifname */
   if ( !ec_init(ifname) ) {
@@ -605,7 +606,7 @@ void ethercat_loop (const char *ifname)
       }
 
       //a_tx_obj->mode_of_op = shm->controlmode[cur_id];
-      a_tx_obj->mode_of_op = cur_drv.control_mode;
+      a_tx_obj->mode_of_op = (cur_drv.control_mode & 0x0F);
       a_tx_obj->target_torque = 0;
       a_tx_obj->target_position =
         (a_rx_obj->position_actual / cur_drv.position_factor) * cur_drv.position_factor;
@@ -638,16 +639,27 @@ void ethercat_loop (const char *ifname)
         double vel      = (shm->abs_vel[cur_id] - dt_act_ref);
         //double vel      = (shm->abs_vel[cur_id]);
 
-#if 1 // 0: w/o hrpsys
         // loopback mode
-        if (shm->loopback[cur_id]) {
+        if (use_hrpsys && shm->loopback[cur_id]) {
           shm->ref_angle[cur_id] = shm->abs_angle[cur_id];
           diff_ang = 0;
           vel = 0;
           cur_drv.integral_value = 0;
         }
-#endif
 
+        double pgain = cur_drv.Pgain;
+        double dgain = cur_drv.Dgain;
+        double igain = cur_drv.Igain;
+        { // set gain on hrpsys as 0.0 to 1.0
+          pgain *= shm->pgain[cur_id];
+          dgain *= shm->dgain[cur_id];
+          igain *= shm->pgain[cur_id];
+          //fprintf(stderr, "%d  gain: %f %f => %f %f",
+          //cur_id, shm->pgain[cur_id], shm->dgain[cur_id], pgain, dgain);
+        }
+
+        if (cur_drv.control_mode == 0x08) {
+        //// POSITION CONTROL mode
         if (fabs(diff_ang) > 0.174) { //
           if ((cur_id != 6) && (cur_id != 13)) {
           fprintf(stderr, "very large difference %d abs:%f ref:%f\n",
@@ -664,27 +676,12 @@ void ethercat_loop (const char *ifname)
           }
         }
 
-        double pgain = cur_drv.Pgain;
-        double dgain = cur_drv.Dgain;
-        double igain = cur_drv.Igain;
-        { // set gain on hrpsys as 0.0 to 1.0
-          pgain *= shm->pgain[cur_id];
-          dgain *= shm->dgain[cur_id];
-          igain *= shm->pgain[cur_id];
-          //fprintf(stderr, "%d  gain: %f %f => %f %f",
-          //cur_id, shm->pgain[cur_id], shm->dgain[cur_id], pgain, dgain);
-        }
-
-        if (cur_drv.control_mode == 0x08) {
-        //// POSITION CONTROL mode
-
-#if 1 // 0: w/o hrpsys
-        if (shm->pgain[cur_id] < 0.99999) {
+        if (use_hrpsys && (shm->pgain[cur_id] < 0.99999)) {
           a_tx_obj->target_position =
             (a_rx_obj->position_actual / cur_drv.position_factor) * cur_drv.position_factor;
           continue;
         }
-#endif
+
         long pos_com = (long)((actual_ref * cur_drv.direction) / cur_drv.abs_count_to_radian) + (long)cur_drv.absolute_origin_count;
         a_tx_obj->target_position = (int32)pos_com;
         if (shm->loopback[cur_id]) {
@@ -727,6 +724,22 @@ void ethercat_loop (const char *ifname)
         if (cur_drv.control_mode == 0x0a) {
         //// TORQUE CONTROL mode
 
+        if (fabs(diff_ang) > 0.174) { //
+          if ((cur_id != 6) && (cur_id != 13)) {
+          fprintf(stderr, "very large difference %d abs:%f ref:%f\n",
+                  cur_id, shm->abs_angle[cur_id], shm->ref_angle[cur_id]);
+          exit(1);
+          } else {
+#if 0
+            if (fabs(diff_ang) > (4 * 0.174)) {
+              fprintf(stderr, "very large difference %d abs:%f ref:%f\n",
+                      cur_id, shm->abs_angle[cur_id], shm->ref_angle[cur_id]);
+              shm->loopback[cur_id] = 1;
+            }
+#endif
+          }
+        }
+
         if (cur_id == 6 || cur_id == 13) {
 #if 0 // for torque_control with ref_torque
           a_tx_obj->target_torque = (int16)(shm->ref_torque[cur_id] * cur_drv.direction);
@@ -760,9 +773,15 @@ void ethercat_loop (const char *ifname)
         shm->motor_output[0][cur_id]  = target_cur * 0.001 * cur_drv.rated_current_limit;
 
         //
-      } else {
-        // control mode error
-      }
+        } else
+        if (cur_drv.control_mode == 0x1a) {
+          // target torque mode
+          a_tx_obj->target_torque = (int16)(shm->ref_torque[cur_id] * cur_drv.direction);
+          continue;
+
+        } else {
+          // control mode error
+        }
       }
       // END: single joint process
     }
@@ -889,6 +908,7 @@ int main(int argc, char *argv[])
      ("testmode,t", "test without controller")
      ("calibration,c", "calibration mode")
      ("startlog,l", "start log")
+     ("without_hrpsys,w", "use without hrpsys")
      ("device,d", boost::program_options::value<std::string>(), "device name")
      ("parameterfile,f", boost::program_options::value<std::string>(), "parameter file name")
      ("logfile,L", boost::program_options::value<std::string>(), "log file name");
@@ -916,6 +936,10 @@ int main(int argc, char *argv[])
    }
    if( argmap.count( "startlog" ) ) {
      //std::cerr << "startlog" << std::endl;
+   }
+   if( argmap.count( "without_hrpsys" ) ) {
+     std::cerr << "without_hrpsys" << std::endl;
+     use_hrpsys = false;
    }
    if( argmap.count( "device" ) ) {
     std::string str(argmap["device"].as<std::string>());
