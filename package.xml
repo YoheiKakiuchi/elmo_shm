@@ -1,0 +1,28 @@
+<package>
+  <name>elmo_shm</name>
+  <version>0.0.1</version>
+  <description>
+Controller using shared memory for Elmo driver
+  </description>
+
+  <license>MIT</license>
+  <maintainer email="youhei@jsk.imi.i.u-tokyo.ac.jp">Yohei Kakiuchi</maintainer>
+  <author>JSK</author>
+  <author>Yohei Kakiuchi</author>
+
+  <!--url type="website"></url-->
+  <url type="repository">https://github.com/YoheiKakiuchi/elmo_shm/</url>
+  <url type="bugtracker">https://github.com/YoheiKakiuchi/elmo_shm/issues</url>
+
+  <buildtool_depend>cmake</buildtool_depend>
+  <buildtool_depend>pkg-config</buildtool_depend>
+
+  <build_depend>libboost-program-option</build_depend>
+  <build_depend>yaml-cpp</build_depend>
+  <build_depend>libncurses-dev</build_depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+
+</package>
