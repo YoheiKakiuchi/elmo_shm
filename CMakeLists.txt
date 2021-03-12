@@ -25,11 +25,3 @@ install(TARGETS elmo_shm DESTINATION bin)
 # libncurses5-dev
 # libtinfo-dev
 # libboost-program-options-dev
-
-#add_library(eus_shm_interface SHARED euslisp/eus_shm_interface.cpp src/servo_shm.cpp)
-#target_link_libraries(eus_shm_interface pthread)
-#set_target_properties(eus_shm_interface PROPERTIES COMPILE_FLAG "-fPIC" PREFIX "" SUFFIX ".so" LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/euslisp)
-
-# TODO
-## boost option parser
-## simulation-mode without EtherCAT
