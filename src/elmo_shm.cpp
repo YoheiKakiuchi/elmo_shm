@@ -229,6 +229,11 @@ void ethercat_loop (const char *ifname)
       drv[cur_id].configured = false;
       drv[cur_id].id = -1;
     } else {
+      if ( cntr >= drv_params.size() ) {
+        drv[cur_id].configured = false;
+        drv[cur_id].id = -1;
+        continue;
+      }
       drv[cur_id] = drv_params[cntr];
 
       drv[cur_id].absolute_2pi_count *= drv[cur_id].position_factor;
