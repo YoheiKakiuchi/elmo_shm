@@ -84,7 +84,7 @@ typedef struct _txpdo_buffer {
   } txpdo_buffer;
 #pragma pack(0)
 
-#define MAX_WORKER_NUM 14
+#define MAX_WORKER_NUM 15
 //
 //#define REALTIME_CYCLE 250 // 250us
 //#define REALTIME_CYCLE 500 // 500us
@@ -585,18 +585,23 @@ void ethercat_loop (const char *ifname)
       shm->hole_status[0][cur_id] = (uint32)(a_rx_obj->status_word << 16) | (uint32)a_rx_obj->extra_status;
       shm->servo_state[1][cur_id] = (int)a_rx_obj->elmo_status;
       double cur_ang = ((a_rx_obj->aux_position) - cur_drv.encoder_origin_count) * ( cur_drv.enc_count_to_radian );
-      shm->cur_angle[cur_id] = cur_ang * cur_drv.direction;
+      cur_ang *= cur_drv.direction;
+      shm->cur_angle[cur_id] = cur_ang;
 
       // absolute
       double cur_abs = ((a_rx_obj->position_actual) - cur_drv.absolute_origin_count) * ( cur_drv.abs_count_to_radian );
       double abs_vel = (a_rx_obj->velocity_actual) * ( cur_drv.abs_count_to_radian );
-      shm->abs_angle[cur_id] = cur_abs * cur_drv.direction;
-      shm->abs_vel[cur_id]   = abs_vel * cur_drv.direction;
+      cur_abs *= cur_drv.direction;
+      abs_vel *= cur_drv.direction;
+      shm->abs_angle[cur_id] = cur_abs;
+      shm->abs_vel[cur_id]   = abs_vel;
 
       double cur_tq  = a_rx_obj->current_actual * cur_drv.torque_constant;
-      shm->cur_torque[cur_id] = cur_tq * cur_drv.direction;
+      cur_tq *= cur_drv.direction;
+      shm->cur_torque[cur_id] = cur_tq;
       double cur_cur = ((a_rx_obj->current_actual) * cur_drv.rated_current_limit) * 0.001; // current [A]
-      shm->motor_current[0][cur_id] = cur_cur * cur_drv.direction;
+      cur_cur *= cur_drv.direction;
+      shm->motor_current[0][cur_id] = cur_cur;
       shm->motor_current[1][cur_id] = cur_cur / cur_drv.rated_current_limit;
       // shm->motor_output[0][cur_id]  = cur_cur * cur_drv.direction;
 
@@ -635,7 +640,7 @@ void ethercat_loop (const char *ifname)
           shm->prev_angle[cur_id] = actual_ref;
         }
         // debug using shm_log
-        shm->prev_angle[cur_id + 14] = actual_ref;
+        //shm->prev_angle[cur_id + 14] = actual_ref;
 
         //// feedback process
         /// USE absolute for feedback
@@ -662,6 +667,7 @@ void ethercat_loop (const char *ifname)
           //fprintf(stderr, "%d  gain: %f %f => %f %f",
           //cur_id, shm->pgain[cur_id], shm->dgain[cur_id], pgain, dgain);
         }
+
 
         if (cur_drv.control_mode == 0x08) {
         //// POSITION CONTROL mode
@@ -695,7 +701,7 @@ void ethercat_loop (const char *ifname)
         }
         //
         shm->joint_offset[cur_id] = (int32)pos_com;
-        shm->joint_offset[cur_id+14] = a_rx_obj->position_actual;
+        //shm->joint_offset[cur_id+14] = a_rx_obj->position_actual;
         //
 #if 0 // add torque_offset for compensating friction torque
         if (cur_id == 6 || cur_id == 13) {
@@ -745,16 +751,10 @@ void ethercat_loop (const char *ifname)
           }
         }
 
-        if (cur_id == 6 || cur_id == 13) {
-#if 0 // for torque_control with ref_torque
-          a_tx_obj->target_torque = (int16)(shm->ref_torque[cur_id] * cur_drv.direction);
-          continue;
-#endif
-        }
         // debug for using shm_log
-        shm->ref_vel[cur_id] = dt_act_ref;
-        shm->ref_angle[14 + cur_id] = - (diff_ang * pgain);
-        shm->ref_vel[14 + cur_id]   = - (vel * dgain);
+        //shm->ref_vel[cur_id] = dt_act_ref;
+        //shm->ref_angle[14 + cur_id] = - (diff_ang * pgain);
+        //shm->ref_vel[14 + cur_id]   = - (vel * dgain);
 
         cur_drv.integral_value += diff_ang;
         if (cur_drv.integral_value >  3.14) cur_drv.integral_value =  3.14;
@@ -770,7 +770,7 @@ void ethercat_loop (const char *ifname)
         if (target_cur <= - cur_limit) target_cur = - cur_limit;
 
         // debug for using shm_log
-        shm->cur_torque[14 + cur_id] = target_cur;
+        //shm->cur_torque[14 + cur_id] = target_cur;
 
         //fprintf(stderr, ", out: %d\n", (int)(target_cur * cur_drv.direction));
         a_tx_obj->target_torque = (int16)(target_cur * cur_drv.direction);
@@ -781,9 +781,38 @@ void ethercat_loop (const char *ifname)
         } else
         if (cur_drv.control_mode == 0x1a) {
           // target torque mode
-          a_tx_obj->target_torque = (int16)(shm->ref_torque[cur_id] * cur_drv.direction);
-          continue;
+          double target_cur = 1000.0 * (shm->ref_torque[cur_id] / cur_drv.rated_current_limit);
+          int cur_limit = (cur_drv.max_target_current/cur_drv.rated_current_limit)*1000.0;
 
+          if (cur_drv.motor_temp > MOTOR_MAX_TEMP) {
+            cur_limit = 700; // rated_current
+          }
+          if (target_cur >=   cur_limit) target_cur =   cur_limit;
+          if (target_cur <= - cur_limit) target_cur = - cur_limit;
+
+          a_tx_obj->target_torque = (int16)(target_cur * cur_drv.direction);
+          shm->motor_output[0][cur_id]  = target_cur * 0.001 * cur_drv.rated_current_limit;
+
+        //
+        } else
+        if (cur_drv.control_mode == 0x2a) {
+          // target velocity mode
+          double ref_vel = shm->ref_vel[cur_id];
+
+          // filter
+          double target_cur = (ref_vel - abs_vel) * dgain;
+          int cur_limit = (cur_drv.max_target_current/cur_drv.rated_current_limit)*1000.0;
+
+          if (cur_drv.motor_temp > MOTOR_MAX_TEMP) {
+            cur_limit = 700; // rated_current
+          }
+          if (target_cur >=   cur_limit) target_cur =   cur_limit;
+          if (target_cur <= - cur_limit) target_cur = - cur_limit;
+
+          a_tx_obj->target_torque = (int16)(target_cur * cur_drv.direction);
+          shm->motor_output[0][cur_id]  = target_cur * 0.001 * cur_drv.rated_current_limit;
+
+        //
         } else {
           // control mode error
         }
