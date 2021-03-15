@@ -13,7 +13,7 @@ void *list_display_thread_fun (void *arg)
   volatile int *stop_flag = (int *)(((unsigned long *)arg)[2]);
   ListDisplay *disp = (ListDisplay *)(((int *)arg)[3]);
 
-  realtime_task::Context rt_context(prio, period);
+  realtime_task::Context rt_context(prio, period, false);
 
   disp->flush();
 

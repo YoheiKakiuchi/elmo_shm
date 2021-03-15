@@ -86,11 +86,11 @@ class Context {
   }
   int latency_fd;
 public:
-  Context( const int prio, const unsigned long interval_us = 1000 )
+  Context( const int prio, const unsigned long interval_us = 1000 , const bool write_latency_fd = true)
     : m_interval( interval_us * 1000 ), latency_fd(-1), _int_stat( interval_us )
   {
     // see cyclictest in rt-tests
-    if (latency_fd < 0) {
+    if (write_latency_fd && latency_fd < 0) {
       struct stat st;
       if( stat("/dev/cpu_dma_latency", &st) == 0 ) {
         latency_fd = open("/dev/cpu_dma_latency", O_RDWR);
