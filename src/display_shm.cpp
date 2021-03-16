@@ -37,8 +37,8 @@ void *list_display_thread_fun (void *arg)
  */
 ///// DISPLAY methods
 #define START_INDEX  0
-#define COLUMN_NUM   7
-#define ROW_NUM      2
+#define COLUMN_NUM   3
+#define ROW_NUM      1
 #define COLUMN_WIDTH 11
 #define ROW_WIDTH    10
 
