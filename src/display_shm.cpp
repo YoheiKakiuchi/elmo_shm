@@ -40,7 +40,7 @@ void *list_display_thread_fun (void *arg)
 #define COLUMN_NUM   7
 #define ROW_NUM      2
 #define COLUMN_WIDTH 11
-#define ROW_WIDTH    9
+#define ROW_WIDTH    10
 
 inline void move_cursor_up(FILE* strm, int i)
 {
@@ -155,6 +155,7 @@ void *display_thread_fun (void *arg)
             m0_jitter, m0_max_int/1000.0, m0_min_int/1000.0);
     fprintf(print_strm, "/ m1 j: %4.2f [us], max: %6.4f [ms], min: %6.4f [ms]\n",
             m1_jitter, m1_max_int/1000.0, m1_min_int/1000.0);
+
     //int shm_idx;
     for(int n = 0; n < ROW_NUM; n++) {
       fprintf(print_strm, "       id#:");
@@ -172,6 +173,8 @@ void *display_thread_fun (void *arg)
       fprintf(print_strm, "       cur:");
       next_row(print_strm);
       fprintf(print_strm, "      temp:");
+      next_row(print_strm);
+      fprintf(print_strm, "     DC in:");
       next_row(print_strm);
       fprintf(print_strm, "    extra0:");
       next_row(print_strm);
@@ -309,6 +312,15 @@ void *display_thread_fun (void *arg)
             char_color(print_strm, 44); // blue
           }
           fprintf(print_strm, "%10.2f ", temp);
+          char_color(print_strm, 0);
+          next_row(print_strm);
+        }
+        { // DC in
+          double vlt = shm->board_vdd[0][idx];
+          if (vlt < 5.0) {
+            char_color(print_strm, 41); // red
+          }
+          fprintf(print_strm, "%10.2f ", vlt);
           char_color(print_strm, 0);
           next_row(print_strm);
         }

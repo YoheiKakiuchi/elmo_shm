@@ -55,7 +55,7 @@ shm_logger shm_log;
 
 //
 uint16_t rxpdo_set[] = {0x160F, 0x160C, 0x1618, 0x160A, 0x160B};
-uint16_t txpdo_set[] = {0x1A0E, 0x1A11, 0x1A1E, 0x1A1F,
+uint16_t txpdo_set[] = {0x1A0E, 0x1A11, 0x1A1E, 0x1A1F, 0x1A18,
                         0x1A22, 0x1A21,
                         0x1A0A, 0x1A0B};
 
@@ -78,8 +78,8 @@ typedef struct _txpdo_buffer {
   int16 current_actual;  //0x1A1F 0x6078 16 Current actual value
   // int16 analog_input;    //0x1A1D 0x2205 16 Analog input
   // int16 torque_demand;   //0x1A12 0x6074 16 Torque demand value
+  uint32 dc_volt;      //0x1A18 0x6079 32 DC link circuit voltage
   uint32 elmo_status;  //0x1A22 0x1002 32 ELMO Status Register
-  //uint32 dc_vlot;      //0x1A18 0x6079 32 DC link circuit voltage
   uint16 extra_status; //0x1A21 0x2085 16 Extra Status Register
   uint16 status_word;    //0x1A0A 0x6041 16 Status word
   uint8 mode_of_op;      //0x1A0B 0x6061 8 Mode of operation display
@@ -609,6 +609,7 @@ void ethercat_loop (const char *ifname)
       cur_ang *= cur_drv.direction;
       shm->cur_angle[cur_id] = cur_ang;
 
+      shm->board_vdd[0][cur_id] = (a_rx_obj->dc_volt)*0.001;
       // absolute
       double cur_abs = ((a_rx_obj->position_actual) - cur_drv.absolute_origin_count) * ( cur_drv.abs_count_to_radian );
       double abs_vel = (a_rx_obj->velocity_actual) * ( cur_drv.abs_count_to_radian );
