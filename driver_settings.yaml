@@ -39,3 +39,10 @@ motor_thermal_resistance : [2.0, 2.0, 2.0, 2.0]
 
 # [ J/K ]
 motor_heat_capacity : [100.0, 100.0, 100.0, 100.0]
+
+## error_limit
+## clamp_i
+## position_filter
+## position_filter_parameters
+## velocity_filter
+## velocity_filter_parameters
