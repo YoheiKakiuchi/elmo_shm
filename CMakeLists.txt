@@ -12,7 +12,7 @@ find_package(Boost REQUIRED
 ## TODO find_package(yaml-cpp)
 ## TODO find_package(ncurses)
 ## TODO tinfo-dev??
-set(SOURCES src/elmo_shm.cpp src/elmo_common.cpp src/display_shm.cpp src/list_display.cpp src/driver_parameter.cpp)
+set(SOURCES src/elmo_shm.cpp src/elmo_common.cpp src/display_shm.cpp src/list_display.cpp src/driver_parameter.cpp src/IIRFilter.cpp)
 set(CMAKE_C_FLAGS "-O3 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare -std=c++11")
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare -std=c++11")
 include_directories(include ${Boost_INCLUDE_DIRS} SOEM/soem SOEM/osal SOEM/osal/linux SOEM/oshw/linux)

@@ -43,6 +43,8 @@ SOFTWARE.
 #include <vector>
 #include <string>
 #include <cmath>
+#include <memory> // shared_ptr
+#include "IIRFilter.h"
 #include "servo_shm.h"
 
 extern void *display_thread_fun (void *arg);
@@ -123,6 +125,10 @@ bool calibration_mode = false;
 bool use_hrpsys = true;
 std::vector<driver_parameter> drv_params;
 long zero_count = 0;
+
+typedef std::shared_ptr<IIRFilter> IIRFilterPtr;
+std::vector<IIRFilterPtr> pos_filters;
+std::vector<IIRFilterPtr> vel_filters;
 
 //// gloabl variables for display (should be thread_safe)
 double jitter = 0;
@@ -262,6 +268,21 @@ void ethercat_loop (const char *ifname)
 
       drv[cur_id].motor_temp   = MOTOR_START_TEMP;  // degree celsius
       drv[cur_id].motor_energy = MOTOR_START_TEMP * drv[cur_id].motor_heat_capacity; // J
+
+      //
+      vel_filters.push_back(IIRFilterPtr( new IIRFilter("")));
+      // parameter for 40Hz low pass / 1KHz sample
+      std::vector<double> A(4);
+      std::vector<double> B(4);
+      A[0] = 1.0;
+      A[1] = -2.498608344691178;
+      A[2] =  2.115254127003158;
+      A[3] = -0.604109699507275;
+      B[0] = 0.00156701035058827;
+      B[1] = 0.00470103105176481;
+      B[2] = 0.00470103105176481;
+      B[3] = 0.00156701035058827;
+      vel_filters[cntr]->setParameter(3, A, B);
 
       cntr++;
     }
@@ -798,9 +819,9 @@ void ethercat_loop (const char *ifname)
         if (cur_drv.control_mode == 0x2a) {
           // target velocity mode
           double ref_vel = shm->ref_vel[cur_id];
-
+          double filtered_vel = vel_filters[cur_id]->passFilter(abs_vel);
           // filter
-          double target_cur = (ref_vel - abs_vel) * dgain;
+          double target_cur = (ref_vel - filtered_vel) * dgain;
           int cur_limit = (cur_drv.max_target_current/cur_drv.rated_current_limit)*1000.0;
 
           if (cur_drv.motor_temp > MOTOR_MAX_TEMP) {
