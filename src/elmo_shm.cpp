@@ -820,8 +820,9 @@ void ethercat_loop (const char *ifname)
         if (cur_drv.control_mode == 0x2a) {
           // target velocity mode
           double ref_vel = shm->ref_vel[cur_id];
-          double filtered_vel = vel_filters[cur_id]->passFilter(abs_vel);
           // filter
+          double filtered_vel = vel_filters[cur_id]->passFilter(abs_vel);
+
           double target_cur = (ref_vel - filtered_vel) * dgain;
           int cur_limit = (cur_drv.max_target_current/cur_drv.rated_current_limit)*1000.0;
 
@@ -1036,6 +1037,7 @@ int main(int argc, char *argv[])
      //
      shm->ref_angle[i] = 0.0;
      shm->ref_torque[i] = 0.0;
+     shm->ref_vel[i] = 0.0;
      shm->cur_vel[i] = 0.0;
      shm->abs_vel[i] = 0.0;
      shm->pgain[i] = 0.0;
