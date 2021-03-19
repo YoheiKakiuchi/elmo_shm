@@ -96,6 +96,10 @@ public:
   }
   void save (std::string &fname) {
     std::cerr << "save : " << fname << ", size = " << _m_log.size() << std::endl;
+    if (_m_log.size() == 0) {
+      std::cerr << "do not save log" << std::endl;
+      return;
+    }
     open(fname);
     for(unsigned int j = 0; j < _m_log.size(); j++) {
       servo_shm &shm = _m_log[j];
