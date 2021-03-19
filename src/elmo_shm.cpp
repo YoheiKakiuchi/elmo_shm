@@ -38,6 +38,7 @@ SOFTWARE.
 #include <sys/ipc.h>
 #include <sys/types.h>
 #include <sys/shm.h>
+#include <sys/time.h> // gettimeofday
 #include <signal.h>
 
 #include <vector>
@@ -48,6 +49,7 @@ SOFTWARE.
 #include "servo_shm.h"
 
 extern void *display_thread_fun (void *arg);
+extern void exit_with_no(int);
 
 // log
 #include "shm_logger.h"
@@ -690,14 +692,13 @@ void ethercat_loop (const char *ifname)
           //cur_id, shm->pgain[cur_id], shm->dgain[cur_id], pgain, dgain);
         }
 
-
         if (cur_drv.control_mode == 0x08) {
         //// POSITION CONTROL mode
         if (fabs(diff_ang) > 0.174) { //
           if ((cur_id != 6) && (cur_id != 13)) {
           fprintf(stderr, "very large difference %d abs:%f ref:%f\n",
                   cur_id, shm->abs_angle[cur_id], shm->ref_angle[cur_id]);
-          exit(1);
+          exit_with_no(1);
           } else {
 #if 0
             if (fabs(diff_ang) > (4 * 0.174)) {
@@ -948,10 +949,15 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
 
 std::string logfilename("shm_log");
 
-void cchandler(int) {
-  fprintf(stderr, "exit\n");
+void exit_with_no(int exitno) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  fprintf(stderr, "exit %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
   shm_log.save(logfilename);
-  exit(0);
+  exit(exitno);
+}
+void cchandler(int) {
+  exit_with_no(0);
 }
 
 int main(int argc, char *argv[])
