@@ -4,11 +4,7 @@
 #include <iostream>
 #include "driver_parameter.h"
 
-//read_int
-//read_float
-//read_int_vector
-//read_float_vector
-//--read_string
+//read_string
 bool read_value(YAML::Node &node, std::string &key, int *value)
 {
   if ( node[key] ) {
@@ -130,6 +126,7 @@ bool parse_node(YAML::Node &node, std::vector<driver_parameter> &params)
   }
   macro_read_floatvec(origin_offset_angle);
 
+  macro_read_intvec(shm_id);
   macro_read_intvec(control_mode);
   macro_read_intvec(position_factor);
   macro_read_intvec(direction);

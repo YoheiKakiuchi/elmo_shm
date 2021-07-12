@@ -4,6 +4,7 @@
 #include <vector>
 typedef struct driver_parameter {
   // Settings
+  int shm_id;
   int control_mode;
   int position_factor;
   int direction;
