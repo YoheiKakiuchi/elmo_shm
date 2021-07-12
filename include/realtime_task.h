@@ -57,6 +57,20 @@ public:
       reset();
     }
   }
+  double get_time_usec() {
+    timespec n_t;
+    clock_gettime( CLOCK_MONOTONIC, &n_t );
+    double measured_interval_usec = ((n_t.tv_sec - m_t.tv_sec)*NSEC_PER_SEC + (n_t.tv_nsec - m_t.tv_nsec))/1000.0;
+
+    return measured_interval_usec;
+  }
+  long get_time_nsec() {
+    timespec n_t;
+    clock_gettime( CLOCK_MONOTONIC, &n_t );
+    long measured_interval_nsec = (n_t.tv_nsec - m_t.tv_nsec);
+    measured_interval_nsec += (n_t.tv_sec - m_t.tv_sec)*NSEC_PER_SEC;
+    return measured_interval_nsec;
+  }
   void reset() {
     n = 0.0;
     norm2 = 0.0;
@@ -156,6 +170,12 @@ public:
   }
   double statistics_get_max_interval () {
     return _int_stat.get_max_interval();
+  }
+  double statistics_get_time_usec() {
+    return _int_stat.get_time_usec();
+  }
+  long statistics_get_time_nsec() {
+    return _int_stat.get_time_nsec();
   }
 };
 } // namespace
