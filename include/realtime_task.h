@@ -86,6 +86,18 @@ public:
   double get_min_interval () {
     return min_interval;
   }
+  void sleep_until (long tm) {
+    timespec n_t;
+    n_t.tv_sec = m_t.tv_sec;
+    n_t.tv_nsec = m_t.tv_nsec;
+
+    n_t.tv_nsec += tm;
+    if ( n_t.tv_nsec  > NSEC_PER_SEC ) {
+      n_t.tv_nsec -= NSEC_PER_SEC;
+      n_t.tv_sec += 1;
+    }
+    clock_nanosleep( CLOCK_MONOTONIC, TIMER_ABSTIME, &n_t, NULL );
+  }
 };
 
 class Context {
