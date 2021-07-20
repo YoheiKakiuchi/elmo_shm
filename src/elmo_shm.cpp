@@ -539,6 +539,33 @@ void ethercat_loop (const char *ifname)
   realtime_task::Context rt_context(REALTIME_PRIO_MAX, REALTIME_CYCLE);
   //txpdo_buffer *rx_obj = (txpdo_buffer *)malloc(sizeof(txpdo_buffer) * ec_slavecount);
   //rxpdo_buffer *tx_obj = (rxpdo_buffer *)malloc(sizeof(rxpdo_buffer) * ec_slavecount);
+#if 1
+  {
+#define SYNC_TIME   1000000 // 1ms(1000*1000nsec)
+#define FIRE_TIMING  250000
+    // for sync0
+    realtime_task::IntervalStatics tmp_tm(0);
+    tmp_tm.start(true);
+    long sync = 0;
+    for(int workerid = 1; workerid <= ec_slavecount ; workerid++) {
+      if (!drv[workerid-1].configured) continue;
+      long tm_nsec = tmp_tm.get_time_nsec();
+      //fprintf(stderr,"%d / %d\n", workerid, tm_nsec);
+      //ec_dcsync0(workerid, TRUE, SYNC_TIME, tm_nsec);
+      //ec_dcsync0(workerid, TRUE, SYNC_TIME, 0);
+      ec_dcsync0(workerid, TRUE, SYNC_TIME, SYNC_TIME - tm_nsec);
+    }
+    long tm_nsec = tmp_tm.get_time_nsec();
+    //fprintf(stderr, "%d / %d\n", -1, tm_nsec);
+    if (tm_nsec > FIRE_TIMING) {
+      tm_nsec = SYNC_TIME*(1 + (tm_nsec - FIRE_TIMING)/SYNC_TIME) + FIRE_TIMING;
+    } else {
+      tm_nsec = FIRE_TIMING;
+    }
+    //fprintf(stderr,"tm_nsec = %d\n", tm_nsec);
+    tmp_tm.sleep_until(tm_nsec);
+  }
+#endif
   while (inOP) {
     m0.start(false);
     // send data
