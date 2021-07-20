@@ -477,9 +477,9 @@ void ethercat_loop (const char *ifname)
       if (calibration_mode) {
         // TODO
       }
-#if 0
+#if 1
       //// for incremental encoder -> add to parameters
-      if (cur_id == 6 || cur_id == 13) {
+      if (shm_id == 6 || shm_id == 13) {
         cur_drv.absolute_origin_count = a_rx_obj->position_actual;
       }
 #endif
@@ -586,7 +586,7 @@ void ethercat_loop (const char *ifname)
     //memcpy(tx_obj, ec_slave[0].outputs, sizeof(rxpdo_buffer)*ec_slavecount);
 
     bool zero_exist = false;
-    for(int workerid = 1; workerid <= ec_slavecount ; workerid++) {
+    for(int workerid = 1; workerid <= ec_slavecount ; workerid++) { // START: for
       if (!drv[workerid-1].configured) continue;
       driver &cur_drv = drv[workerid-1];
       int cur_id = cur_drv.id;
@@ -962,7 +962,7 @@ void ethercat_loop (const char *ifname)
         }
       }
       // END: single joint process
-    }
+    } // END: for
     // data process end
 
     jitter       = rt_context.statistics_get_norm();
