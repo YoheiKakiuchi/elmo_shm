@@ -887,6 +887,16 @@ void ethercat_loop (const char *ifname)
         //
         shm->motor_output[0][shm_id]  = target_cur * 0.001 * cur_drv.rated_current_limit;
 
+        if (shm_id == 6 || shm_id == 13) {
+          if( fabs(dt_act_ref) > 0.001 ) {
+#define torque_Ts 250.0
+            if (dt_act_ref > 0) {
+              a_tx_obj->torque_offset =   (int)torque_Ts * cur_drv.direction;
+            } else if (dt_act_ref < 0) {
+              a_tx_obj->torque_offset = - (int)torque_Ts * cur_drv.direction;
+            }
+	  }
+	}
         //
         } else
         if (cur_drv.control_mode == 0x1a) {
@@ -908,10 +918,33 @@ void ethercat_loop (const char *ifname)
         if (cur_drv.control_mode == 0x2a) {
           // target velocity mode
           double ref_vel = shm->ref_vel[shm_id];
-          // filter
-          double filtered_vel = vel_filters[shm_id]->passFilter(abs_vel);
 
-          double target_cur = (ref_vel - filtered_vel) * dgain;
+          // filter
+          double filtered_vel = vel_filters[cur_id]->passFilter(abs_vel);
+	  //double filtered_vel = abs_vel;
+	  double diff_vel = ref_vel - filtered_vel;
+
+	  cur_drv.integral_value += diff_vel;
+	  if (cur_drv.integral_value >  62.8) cur_drv.integral_value =  62.8;
+	  if (cur_drv.integral_value < -62.8) cur_drv.integral_value = -62.8;
+
+	  double target_cur = diff_vel * dgain + cur_drv.integral_value * igain;
+	  if (ref_vel > 0.01) {
+	    target_cur += 200; // 200 is magic number
+	    //if (ref_vel > xxx) {
+	    //  target_cur += yyy;
+	    //} else {
+	    //  target_cur += 200 - zzz*ref_vel;
+	    //} // 200 - zzz*xxx = yyy
+	  } else if (ref_vel < -0.01) {
+	    target_cur -= 200;
+	    //if (ref_vel < - xxx) {
+	    //  target_cur -= yyy;
+	    //} else {
+	    //  target_cur -= (200 - zzz*ref_vel);
+	    //}
+	  }
+
           int cur_limit = (cur_drv.max_target_current/cur_drv.rated_current_limit)*1000.0;
 
           if (cur_drv.motor_temp > MOTOR_MAX_TEMP) {
