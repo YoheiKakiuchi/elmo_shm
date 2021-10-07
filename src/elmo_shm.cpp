@@ -280,7 +280,17 @@ void ethercat_loop (const char *ifname)
       // [b, a] = butter(3, 2*40*0.001)
       std::vector<double> A(4);
       std::vector<double> B(4);
-#if 1      // 80Hz
+#if 1      // 125Hz
+      A[0] =  1.000000000000000e+00;
+      A[1] = -1.459029062228061e+00;
+      A[2] =  9.103690002900684e-01;
+      A[3] = -1.978251872643194e-01;
+      B[0] =  3.168934384971104e-02;
+      B[1] =  9.506803154913313e-02;
+      B[2] =  9.506803154913313e-02;
+      B[3] =  3.168934384971104e-02;
+#endif
+#if 0      // 80Hz
       A[0] =  1.000000000000000e+00;
       A[1] = -2.003797477370017e+00;
       A[2] =  1.447054019489380e+00;
@@ -925,19 +935,22 @@ void ethercat_loop (const char *ifname)
 	  double diff_vel = ref_vel - filtered_vel;
 
 	  cur_drv.integral_value += diff_vel;
-	  if (cur_drv.integral_value >  62.8) cur_drv.integral_value =  62.8;
-	  if (cur_drv.integral_value < -62.8) cur_drv.integral_value = -62.8;
+//#define MAX_VEL_INTEGRAL 62.8
+#define MAX_VEL_INTEGRAL 125.6
+//#define MAX_VEL_INTEGRAL 188.4
+	  if (cur_drv.integral_value >   MAX_VEL_INTEGRAL) cur_drv.integral_value =   MAX_VEL_INTEGRAL;
+	  if (cur_drv.integral_value < - MAX_VEL_INTEGRAL) cur_drv.integral_value = - MAX_VEL_INTEGRAL;
 
 	  double target_cur = diff_vel * dgain + cur_drv.integral_value * igain;
 	  if (ref_vel > 0.01) {
-	    target_cur += 200; // 200 is magic number
+	    target_cur += 246; // 246 is magic number
 	    //if (ref_vel > xxx) {
 	    //  target_cur += yyy;
 	    //} else {
 	    //  target_cur += 200 - zzz*ref_vel;
 	    //} // 200 - zzz*xxx = yyy
 	  } else if (ref_vel < -0.01) {
-	    target_cur -= 200;
+	    target_cur -= 246;
 	    //if (ref_vel < - xxx) {
 	    //  target_cur -= yyy;
 	    //} else {
