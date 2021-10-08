@@ -190,7 +190,7 @@ void *display_thread_fun (void *arg)
         }
         { // servo state
           unsigned short stat = ((unsigned int)(shm->hole_status[0][idx]) & 0xFFFF0000) >> 16;
-          if ((stat & 0x0080) != 0x0080) char_color(print_strm, 47); // green
+          if ((stat & 0x0080) != 0x0080) char_color(print_strm, 47); // white
           fprintf(print_strm, "w"); // warning
           if ((stat & 0x0010) == 0x0010) char_color(print_strm, 42); // green
           fprintf(print_strm, " v"); // voltage
