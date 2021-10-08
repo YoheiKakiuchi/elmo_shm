@@ -526,12 +526,18 @@ void ethercat_loop (const char *ifname)
 
       double cur_abs = ((a_rx_obj->position_actual) - cur_drv.absolute_origin_count) * ( cur_drv.abs_count_to_radian );
       shm->abs_angle[shm_id]  = cur_abs * cur_drv.direction;
-      shm->ref_angle[shm_id]  = shm->abs_angle[shm_id];
       // check initial absolute count
       int  cur_count = (a_rx_obj->aux_position);
       cur_drv.encoder_origin_count = cur_count - (int)(cur_abs / ( cur_drv.enc_count_to_radian ));
       double cur_ang = ((a_rx_obj->aux_position) - cur_drv.encoder_origin_count) * ( cur_drv.enc_count_to_radian );
       shm->cur_angle[shm_id] = cur_ang * cur_drv.direction;
+
+      //shm->ref_angle[shm_id]  = shm->abs_angle[shm_id];
+      if (shm_id == 9) {
+        shm->ref_angle[shm_id] = shm->cur_angle[shm_id];
+      } else {
+        shm->ref_angle[shm_id] = shm->abs_angle[shm_id];
+      }
     }
     if (calibration_mode) {
       exit(-1);
@@ -767,6 +773,9 @@ void ethercat_loop (const char *ifname)
         /// USE absolute for feedback
         //double diff_ang = (shm->abs_angle[shm_id] - shm->ref_angle[shm_id]);
         double diff_ang = (shm->abs_angle[shm_id] - actual_ref);
+        if (shm_id == 9) {
+          diff_ang = (shm->cur_angle[shm_id] - actual_ref);
+        }
         double vel      = (shm->abs_vel[shm_id] - dt_act_ref);
         //double vel      = (shm->abs_vel[shm_id]);
 
@@ -1005,10 +1014,12 @@ void ethercat_loop (const char *ifname)
     } else {
       zero_count = 0;
     }
+#if 0
     if (zero_count > 5000) {
       fprintf(stderr, "many zero count\n");
       exit(1);
     }
+#endif
     //
     m1.start(false);
     rt_context.wait(); // real-time look (keep cycle)
