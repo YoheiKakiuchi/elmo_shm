@@ -44,7 +44,7 @@ struct servo_shm {
   // IMU
   float IMU_accel[3];
   float IMU_gyro[3];
-  float IMU_filtered_orientation1[4]; //quaternion
+  float IMU_filtered_orientation1[4]; //quaternion x,y,z,w
   float IMU_filtered_orientation2[4]; //quaternion
   float IMU_sensor_orientation[4]; // read from sensor if available
 
