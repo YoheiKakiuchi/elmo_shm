@@ -1,0 +1,3 @@
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea61", GROUP=”adm”, ATTRS{serial}=LPMSTO2000234", RUN+="/bin/sh -c 'echo $kernel > /sys/bus/usb/drivers/ftdi_sio/unbind'"
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea61", GROUP=”adm”, ATTRS{serial}=LPMSTO2000233", RUN+="/bin/sh -c 'echo $kernel > /sys/bus/usb/drivers/ftdi_sio/unbind'"
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea61", MODE="0666", GROUP="tty", SYMLINK+="LPMS_IMU"
