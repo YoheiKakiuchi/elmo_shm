@@ -976,6 +976,7 @@ void ethercat_loop (const char *ifname)
     m1.start(false);
     rt_context.wait(); // real-time look (keep cycle)
     m1.sync();
+    //std::cerr << counter << std::endl;
   }
 }
 

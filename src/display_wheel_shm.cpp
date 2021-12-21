@@ -155,6 +155,11 @@ void *display_thread_fun (void *arg)
             m0_jitter, m0_max_int/1000.0, m0_min_int/1000.0);
     fprintf(print_strm, "/ m1 j: %4.2f [us], max: %6.4f [ms], min: %6.4f [ms]\n",
             m1_jitter, m1_max_int/1000.0, m1_min_int/1000.0);
+    fprintf(print_strm, "accel: %6.4f %6.4f %6.4f / gyro: %6.4f %6.4f %6.4f / orientation: %6.4f %6.4f %6.4f %6.4f\n",
+	    shm->IMU_accel[0], shm->IMU_accel[1], shm->IMU_accel[2],
+	    shm->IMU_gyro[0], shm->IMU_gyro[1], shm->IMU_gyro[2],
+	    shm->IMU_sensor_orientation[0], shm->IMU_sensor_orientation[2],
+	    shm->IMU_sensor_orientation[3], shm->IMU_sensor_orientation[4]);
 
     //int shm_idx;
     for(int n = 0; n < ROW_NUM; n++) {
@@ -264,7 +269,7 @@ void *display_thread_fun (void *arg)
           next_row(print_strm);
         }
         { // cur velocity
-          fprintf(print_strm, "%12.3f ", shm->cur_vel[idx]);
+          fprintf(print_strm, "%10.3f ", shm->cur_vel[idx]);
           next_row(print_strm);
         }
         { // current

@@ -1,0 +1,50 @@
+number_of_drivers : 2
+
+shm_id : [ 0, 1 ]
+
+## rad
+origin_offset_angle : [ 0, 0 ]
+
+# 08: position_control, 0a(10): torque_control, 1a(26) : torque reference, 2a(42) : velocity reference
+control_mode : [ 26, 26 ]
+
+# scale factor of position count
+position_factor : [8, 8 ]
+
+# direction of axis
+direction : [1, 1 ]
+
+absolute_2pi_count : [ 96, 96 ]
+encoder_2pi_count :  [ 96, 96 ]
+
+# rated current [A]
+rated_current_limit : [ 6.0, 6.0 ]
+# max current [A]
+max_target_current :  [ 12.0, 12.0 ]
+
+# torque constant [ Nm/A ]
+torque_constant : [10.0, 10.0 ]
+
+# GAIN
+# Pgain [ Nm / rad ]
+Pgain : [ 200.0, 200.0 ]
+# Dgain [ Nm / rad/sec ]
+Dgain : [ 7.0, 7.0 ]
+# Igain [ Nm / (rad*src) ]
+Igain : [  0, 0]
+
+# [ ohm ]
+motor_resistance : [1.0, 1.0 ]
+
+# [ K/W ]
+motor_thermal_resistance : [2.0, 2.0 ]
+
+# [ J/K ]
+motor_heat_capacity : [100.0, 100.0 ]
+
+## error_limit
+## clamp_i
+## position_filter
+## position_filter_parameters
+## velocity_filter
+## velocity_filter_parameters
