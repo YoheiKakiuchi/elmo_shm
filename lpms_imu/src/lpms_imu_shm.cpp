@@ -87,8 +87,10 @@ int main(int argc, char **argv) {
   s_shm->IMU_gyro[2] = 0.0;
 
   bool use_local_ekf = false;
+  bool is_calibrate_gyro = false;
   for (int i = 1; i < argc; i++) {
     if(strcmp(argv[i], "-e") == 0) use_local_ekf = true;
+    if(strcmp(argv[i], "-g") == 0) is_calibrate_gyro = true;
   }
   //
   EKFilter ekf;
@@ -108,13 +110,22 @@ int main(int argc, char **argv) {
       //lpms->pause();
       if (lpms->setConfigurationPrm(PRM_SAMPLING_RATE, 400)) { // 400 Hz
         std::cerr << "set sample rate: success" << std::endl;
+      } else {
+        std::cerr << "set sample rate: failed" << std::endl;
       }
+      sleep(1);
       if (lpms->setConfigurationPrm(PRM_ACC_RANGE, SELECT_ACC_RANGE_8G)) {
         std::cerr << "set acc range: success" << std::endl;
+      } else {
+        std::cerr << "set acc range: failed" << std::endl;
       }
+      sleep(1);
       if (lpms->setConfigurationPrm(PRM_GYR_RANGE, SELECT_GYR_RANGE_500DPS)) {
         std::cerr << "set gyro range: success" << std::endl;
+      } else {
+        std::cerr << "set gyro range: failed" << std::endl;
       }
+      sleep(1);
       if (lpms->setConfigurationPrm(PRM_SELECT_DATA,
                                     (SELECT_LPMS_QUAT_OUTPUT_ENABLED |
                                      //SELECT_LPMS_EULER_OUTPUT_ENABLED |
@@ -129,17 +140,38 @@ int main(int argc, char **argv) {
                                      SELECT_LPMS_ANGULAR_VELOCITY_OUTPUT_ENABLED )
                                     )) {
         std::cerr << "select data : success" << std::endl;
+      } else {
+        std::cerr << "select data : failed" << std::endl;
       }
-      if(lpms->updateParameters()) {
-        std::cerr << "update param" << std::endl;
+      sleep(1);
+      if (lpms->setConfigurationPrm(PRM_FILTER_MODE, SELECT_FM_MADGWICK_GYRO_ACC_MAG)) {
+          std::cerr << "select filter mode : success" << std::endl;
+      } else {
+          std::cerr << "select filter mode : failed" << std::endl;
       }
-      lpms->startCalibrateGyro(); // start calibrate and sleep, is this required???
-      sleep(2);
+      sleep(1);
+      if (lpms->updateParameters()) {
+        std::cerr << "update param : success" << std::endl;
+      } else {
+        std::cerr << "update param : failed" << std::endl;
+      }
+      if (is_calibrate_gyro) {
+        std::cout << "Started gyro calibration. Do NOT touch the robot." << std::endl;
+        lpms->startCalibrateGyro(); // start calibrate and sleep, is this required???
+        sleep(30); // It takes 30 s to calibrate gyro
+        std::cout << "Finished gyro calibration." << std::endl;
+      }
+      sleep(1);
       if (lpms->setConfigurationPrm(PRM_GYR_AUTOCALIBRATION, 0)) { // stop auto gyro calibration
         std::cerr << "disable auto gyro calibration: success" << std::endl;
+      } else {
+        std::cerr << "disable auto gyro calibration: failed" << std::endl;
       }
+      sleep(1);
       if(lpms->updateParameters()) {
-        std::cerr << "update param" << std::endl;
+        std::cerr << "update param : success" << std::endl;
+      } else {
+        std::cerr << "update param : failed" << std::endl;
       }
       break;
     }
@@ -149,6 +181,11 @@ int main(int argc, char **argv) {
       return 0;
     }
   }
+
+  sleep(1);
+  std::cout << "orientation reset" << std::endl;
+  lpms->setOrientationOffset(0); // I don't know what the
+  sleep(1);
 
   clock_gettime(CLOCK_MONOTONIC, &pose_tm);
   clock_gettime(CLOCK_MONOTONIC, &gyro_tm);
