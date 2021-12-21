@@ -48,7 +48,7 @@ struct servo_shm {
   float IMU_filtered_orientation2[4]; //quaternion
   float IMU_sensor_orientation[4]; // read from sensor if available
 
-  // command for 2 wheels robot 
+  // command for 2 wheels robot
   float com_forward;
   float com_turn;
   int com_wt_flag;
@@ -72,4 +72,6 @@ struct servo_shm {
   char ref_rd_flag[MAX_JOINT_NUM];//
 };
 
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #endif
