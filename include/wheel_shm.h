@@ -72,6 +72,4 @@ struct servo_shm {
   char ref_rd_flag[MAX_JOINT_NUM];//
 };
 
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #endif
