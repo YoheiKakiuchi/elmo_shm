@@ -1,0 +1,17 @@
+
+all: libeus_shm.so
+
+libeus_shm.c:
+	python generate_eus_shm_files.py ../include/wheel_shm.h
+
+libeus_shm.so: libeus_shm.o
+	gcc -o $@ --shared $<
+
+.c.o:
+	gcc -fPIC -O2 -c $<
+
+clean:
+	rm -rf libeus_shm.o
+
+clean_all: clean
+	rm -rf libeus_shm.so

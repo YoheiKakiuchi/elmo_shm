@@ -1,0 +1,19 @@
+
+all: Makefile.gen_command_line
+	make -f Makefile.gen_command_line
+
+Makefile.gen_command_line: generate_files
+
+.PHONY: generate_files
+generate_files:
+	python generate_command_line_tools.py ../include/wheel_shm.h
+
+.PHONY: clean
+clean:
+	make -f Makefile.gen_command_line clean
+
+.PHONY: clean_all
+clean_all: clean
+	make -f Makefile.gen_command_line clean_all
+	rm -rf Makefile.gen_command_line
+
