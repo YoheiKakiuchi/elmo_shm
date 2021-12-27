@@ -8,7 +8,7 @@ from clang.cindex import Config
 file_names = []
 header_string = ''
 
-def print_c_header(fl = sys.stderr):
+def print_c_header(start_file, fl = sys.stderr):
     print('// auto generated file', file=fl)
     print('// md5sum: %s'%(header_string), file=fl)
     print('#include <string>', file=fl)
@@ -17,7 +17,7 @@ def print_c_header(fl = sys.stderr):
     print('', file=fl)
     print('extern "C" {', file=fl)
     print('#include "shm_common.c"', file=fl)
-    print('#include "../include/wheel_shm.h"', file=fl)
+    print('#include "%s"'%(start_file), file=fl)
     print('}', file=fl)
     print('', file=fl)
     print('int checkrange(int i, int min, int max) { // check int range', file=fl)
@@ -49,10 +49,13 @@ def print_c_write_main(name, type_name, size_list, fl = sys.stderr):
         print('      std::cerr << " i";', file=fl)
     if len(size_list) > 0:
         print('      std::cerr << " n";', file=fl)
-        print('      std::cerr << " arg_0 ... arg_%s //";'%(size_list[0]-1), file=fl)
         if len(size_list) > 1:
-            print('      std::cerr << " 0 <= i <= %d";'%(size_list[1]), file=fl)
-        print('      std::cerr << " 0 <= n <= %d";'%(size_list[0]), file=fl)
+            print('      std::cerr << " arg_0 ... arg_%s //";'%(size_list[1]-1), file=fl)
+            print('      std::cerr << " 0 <= i <= %d";'%(size_list[0]), file=fl)
+            print('      std::cerr << " 0 <= n <= %d";'%(size_list[1]), file=fl)
+        else:
+            print('      std::cerr << " arg_0 ... arg_%s //";'%(size_list[0]-1), file=fl)
+            print('      std::cerr << " 0 <= n <= %d";'%(size_list[0]), file=fl)
     print('      std::cerr << std::endl;', file=fl)
     print('      exit(-1);', file=fl)
     print('    } else if(arg == "--debug") {', file=fl)
@@ -81,8 +84,8 @@ def print_c_write_main(name, type_name, size_list, fl = sys.stderr):
         print('  int val_i = 0;', file=fl)
         print('  int val_n = 0;', file=fl)
         print('  if (args.size() > 1) {', file=fl)
-        print('    val_i = checkrange(args[0], 0, %d); }'%(size_list[1]), file=fl)
-        print('    val_n = checkrange(args[1], 0, %d);'%(size_list[0]), file=fl)
+        print('    val_i = checkrange(args[0], 0, %d); }'%(size_list[0]), file=fl)
+        print('    val_n = checkrange(args[1], 0, %d);'%(size_list[1]), file=fl)
 
     else:
         # error
@@ -122,8 +125,10 @@ def print_c_read_main(name, type_name, size_list, fl = sys.stderr):
     if len(size_list) > 0:
         print('      std::cerr << " n //";', file=fl)
         if len(size_list) > 1:
-            print('      std::cerr << " 0 <= i <= %d";'%(size_list[1]), file=fl)
-        print('      std::cerr << " 0 <= n <= %d";'%(size_list[0]), file=fl)
+            print('      std::cerr << " 0 <= i <= %d";'%(size_list[0]), file=fl)
+            print('      std::cerr << " 0 <= n <= %d";'%(size_list[1]), file=fl)
+        else:
+            print('      std::cerr << " 0 <= n <= %d";'%(size_list[0]), file=fl)
     print('      std::cerr << std::endl;', file=fl)
     print('      exit(-1);', file=fl)
     print('    } else if(arg == "--debug") {', file=fl)
@@ -145,8 +150,8 @@ def print_c_read_main(name, type_name, size_list, fl = sys.stderr):
         print('  int val_i = 0;', file=fl)
         print('  int val_n = %d;'%(size_list[0]), file=fl)
         print('  if (args.size() > 1) {', file=fl)
-        print('    val_i = checkrange(args[0], 0, %d); }'%(size_list[1]), file=fl)
-        print('    val_n = checkrange(args[1], 0, %d);'%(size_list[0]), file=fl)
+        print('    val_i = checkrange(args[0], 0, %d); }'%(size_list[0]), file=fl)
+        print('    val_n = checkrange(args[1], 0, %d);'%(size_list[1]), file=fl)
 
     else:
         # error
@@ -164,21 +169,21 @@ def print_c_read_main(name, type_name, size_list, fl = sys.stderr):
         print('  std::cout << std::endl;', file=fl)
     print('}', file=fl)
 
-def print_c_function(name, type_name, size_list):
+def print_c_function(name, type_name, size_list, start_file):
     ## open file
     with open('read_%s.cpp'%(name), mode='w') as fl:
-        print_c_header(fl)
+        print_c_header(start_file, fl)
         print_c_read_main(name, type_name, size_list, fl = fl)
         file_names.append('read_%s'%(name))
 
     with open('write_%s.cpp'%(name), mode='w') as fl:
-        print_c_header(fl)
+        print_c_header(start_file, fl)
         print_c_write_main(name, type_name, size_list, fl = fl)
         file_names.append('write_%s'%(name))
 
     return True
 
-def parse_field_decl(node):
+def parse_field_decl(node, start_file):
     if node.kind == clang.cindex.CursorKind.FIELD_DECL:
         sz_lst = []
         tpname = node.type.spelling
@@ -192,22 +197,22 @@ def parse_field_decl(node):
             tp = tp.get_array_element_type()
         print((node.spelling, tpname, sz_lst))
 
-        print_c_function(node.spelling, tpname, sz_lst)
+        print_c_function(node.spelling, tpname, sz_lst, start_file)
 
     for child in node.get_children():
-        parse_field_decl(child)
+        parse_field_decl(child, start_file)
 
-def parse_struct_decl(node):
+def parse_struct_decl(node, start_file):
     if node.kind != clang.cindex.CursorKind.STRUCT_DECL:
         return
     name = node.type.get_canonical().spelling
     print('// struct name => %s'%(name))
 
-    parse_field_decl(node)
+    parse_field_decl(node, start_file)
 
 def print_struct_recur(start_file, depth, node):
     if str(node.extent.start.file) == start_file:
-        parse_struct_decl(node)
+        parse_struct_decl(node, start_file)
     for child in node.get_children():
         print_struct_recur(start_file, depth+1, child)
 
@@ -237,7 +242,7 @@ if __name__ == '__main__':
     # target_file = '../include/wheel_shm.h'
     import os
     if not os.path.isfile(target_file):
-        raise()
+        raise
 
     index = Index.create()
     tu    = index.parse(target_file)

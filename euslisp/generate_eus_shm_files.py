@@ -72,11 +72,13 @@ def print_c_header(target_file, fl = sys.stderr):
     print('  for (int i = 0; i < n; i++ ) dst[i] = src[i];', file=fl)
     print('  return n; }', file=fl)
 
-    for tp in ('char', 'short', 'int'):
-        print('int copy_long2%s ( int n, long* src, %s *dst ) {'%(tp, tp), file=fl)
+    for tp in ('char', 'short', 'int', 'unsigned char', 'unsigned short', 'unsigned int'):
+        tpl = tp.split(' ')
+        ftp = '_'.join(tpl)
+        print('int copy_long2%s ( int n, long* src, %s *dst ) {'%(ftp, tp), file=fl)
         print('  for (int i = 0; i < n; i++ ) dst[i] = src[i];', file=fl)
         print('  return n; }', file=fl)
-        print('int copy_%s2long ( int n, %s* src, long *dst ) {'%(tp, tp), file=fl)
+        print('int copy_%s2long ( int n, %s* src, long *dst ) {'%(ftp, tp), file=fl)
         print('  for (int i = 0; i < n; i++ ) dst[i] = src[i];', file=fl)
         print('  return n; }', file=fl)
 
@@ -98,6 +100,12 @@ def print_eus_header(target_file, fl = sys.stderr):
 def print_eus_footer(fl = sys.stderr):
     print('  )', file=fl)
     print('(In-package "USER")', file=fl)
+    print(';;(eus_shm::initialize-sharedmemory)', file=fl)
+    print(';;(eus_shm::read-ref_angle 31 (setq av (instantiate float-vector 31)))', file=fl)
+    print(';;(eus_shm::write-ref_angle 31 (setq av (instantiate float-vector 31)))', file=fl)
+    print(';;(eus_shm::read-motor_temp 1 31 (setq av (instantiate float-vector 31)))', file=fl)
+    print(';;(eus_shm::write-motor_temp 1 31 (setq av (instantiate float-vector 31)))', file=fl)
+    print(';;(eus_shm::read/write-{variable name in servo_shm} [motor_count] [vector_size] float/integer-vector)', file=fl)
 
 def print_eus_function(name, type_name, size_list, fl = sys.stderr):
     if len(size_list) == 0:
@@ -149,6 +157,8 @@ def print_c_function(name, type_name, size_list, fl = sys.stderr):
             return False
 
         if r == ':integer':
+            tpl = type_name.split(' ')
+            type_name = '_'.join(tpl)
             print('int read_%s (int n, long* out) { int nn = checkrange(n, 0, %d); return copy_%s2long(nn, &(shm->%s[0]), out); }'%(name, size_list[0], type_name, name), file=fl)
             print('int write_%s (int n, long* in) { int nn = checkrange(n, 0, %d); return copy_long2%s(nn, in, &(shm->%s[0])); }'%(name, size_list[0], type_name, name), file=fl)
         elif r == ':float' or r == ':float32':
@@ -165,6 +175,8 @@ def print_c_function(name, type_name, size_list, fl = sys.stderr):
             return False
 
         if r == ':integer':
+            tpl = type_name.split(' ')
+            type_name = '_'.join(tpl)
             print('long read_%s (int i, int n, long* out) { int ni = checkrange(i, 0, %d); int nn = checkrange(n, 0, %d); return copy_%s2long(nn, &(shm->%s[ni][0]), out); }'%(name, size_list[0], size_list[1], type_name, name), file=fl)
             print('long write_%s (int i, int n, long* in) { int ni = checkrange(i, 0, %d); int nn = checkrange(n, 0, %d); return copy_long2%s(nn, in, &(shm->%s[ni][0])); }'%(name, size_list[0], size_list[1], type_name, name), file=fl)
         elif r == ':float' or r == ':float32':
