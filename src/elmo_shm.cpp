@@ -364,11 +364,23 @@ void ethercat_loop (const char *ifname)
 
     if(!ethercat_open) continue;
     ///
+    driver &cur_drv = drv[workerid-1];
+    int cur_id = cur_drv.id;
+    int shm_id = cur_drv.shm_id;
+
+    if (shm_id == 9) {
     jsk_elmo_settings(workerid,
                       10, // default_control_mode
                       (REALTIME_CYCLE/10),
                       1, // aux position := socket1
                       false); // debug
+    } else {
+    jsk_elmo_settings(workerid,
+                      10, // default_control_mode
+                      (REALTIME_CYCLE/10),
+                      1, // aux position := socket1
+                      false); // debug
+    }
     ///
     elmo_scale_factor_settings(workerid, drv[workerid-1].position_factor, true);
 
@@ -582,17 +594,102 @@ void ethercat_loop (const char *ifname)
     tmp_tm.sleep_until(tm_nsec);
   }
 #endif
+#if 1
+  {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    fprintf(stderr, "[%ld.%06ld] Enter Operation\n", tv.tv_sec, tv.tv_usec);
+  }
+#endif
   while (inOP) {
+    int ret = -1;
     m0.start(false);
+    struct timeval tv_sd, tv_rc;
     // send data
-    ec_send_processdata();
+    gettimeofday(&tv_sd, NULL);
+    ret = ec_send_processdata();
+    if(ret == 0) {
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      fprintf(stderr, "[%ld.%06ld] send failed %d\n", tv.tv_sec, tv.tv_usec, ret);
+    }
     // receive data
+    gettimeofday(&tv_rc, NULL);
     wkc = ec_receive_processdata(EC_TIMEOUTRET);
     //
     m0.sync();
 
     if(wkc < expectedWKC) {
-      fprintf(stderr, "wkc(%d) is less than expected(%d)\n", wkc, expectedWKC);
+#if 1
+      ec_group[currentgroup].docheckstate = FALSE;
+      ec_readstate(); ////
+
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      //fprintf(stderr, "exit %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
+      fprintf(stderr, "[%ld.%06ld] [%ld.%06ld] ret = %d\n",
+              tv_sd.tv_sec, tv_sd.tv_usec, tv_rc.tv_sec, tv_rc.tv_usec, ret);
+      fprintf(stderr, "[%ld.%06ld] wkc(%d) is less than expected(%d) \n",
+              tv.tv_sec, tv.tv_usec, wkc, expectedWKC);
+      // <<< check error
+      for (int slave = 1; slave <= ec_slavecount; slave++) {
+        if ((ec_slave[slave].group == currentgroup) && (ec_slave[slave].state != EC_STATE_OPERATIONAL)) {
+          ec_group[currentgroup].docheckstate = TRUE;
+          if (ec_slave[slave].state == (EC_STATE_SAFE_OP + EC_STATE_ERROR)) {
+            gettimeofday(&tv, NULL);
+            fprintf(stderr, "[%ld.%06ld] ck> ERROR : slave %d is in SAFE_OP + ERROR, attempting ack.\n",
+                    tv.tv_sec, tv.tv_usec, slave);
+            ec_slave[slave].state = (EC_STATE_SAFE_OP + EC_STATE_ACK);
+            ec_writestate(slave);
+          } else if(ec_slave[slave].state == EC_STATE_SAFE_OP) {
+            gettimeofday(&tv, NULL);
+            fprintf(stderr, "[%ld.%06ld] ck> WARNING : slave %d is in SAFE_OP, change to OPERATIONAL.\n",
+                    tv.tv_sec, tv.tv_usec, slave);
+            ec_slave[slave].state = EC_STATE_OPERATIONAL;
+            ec_writestate(slave);
+          } else if(ec_slave[slave].state > EC_STATE_NONE) {
+            if (ec_reconfig_slave(slave, EC_TIMEOUTMON)) {
+              ec_slave[slave].islost = FALSE;
+              gettimeofday(&tv, NULL);
+              fprintf(stderr, "[%ld.%06ld] ck> MESSAGE : slave %d reconfigured\n",
+                      tv.tv_sec, tv.tv_usec, slave);
+            }
+          } else if(!ec_slave[slave].islost) {
+            /* re-check state */
+            ec_statecheck(slave, EC_STATE_OPERATIONAL, EC_TIMEOUTRET);
+            if (ec_slave[slave].state == EC_STATE_NONE) {
+              ec_slave[slave].islost = TRUE;
+              fprintf(stderr, "[%ld.%06ld] ck> ERROR : slave %d lost\n",
+                      tv.tv_sec, tv.tv_usec, slave);
+            }
+          }
+        }
+
+        if (ec_slave[slave].islost) {
+          if(ec_slave[slave].state == EC_STATE_NONE) {
+            if (ec_recover_slave(slave, EC_TIMEOUTMON)) {
+              ec_slave[slave].islost = FALSE;
+              fprintf(stderr, "[%ld.%06ld] ck> MESSAGE : slave %d recovered\n",
+                      tv.tv_sec, tv.tv_usec, slave);
+            }
+          } else {
+            ec_slave[slave].islost = FALSE;
+            fprintf(stderr, "[%ld.%06ld] ck> MESSAGE : slave %d found\n",
+                    tv.tv_sec, tv.tv_usec, slave);
+          }
+        }
+      } /* for ... */
+      if(!ec_group[currentgroup].docheckstate) {
+        fprintf(stderr, "[%ld.%06ld] ck> OK : all slaves resumed OPERATIONAL.\n",
+                tv.tv_sec, tv.tv_usec);
+      }
+      // >>> check error
+#endif
+      // <<< wait next frame
+      m1.start(false);
+      rt_context.wait(); // real-time look (keep cycle)
+      m1.sync();
+      // >>> wait next frame
       continue;
     }
     // data process
@@ -712,6 +809,7 @@ void ethercat_loop (const char *ifname)
       shm->servo_state[1][shm_id] = (int)a_rx_obj->elmo_status;
       double cur_ang = ((a_rx_obj->aux_position) - cur_drv.encoder_origin_count) * ( cur_drv.enc_count_to_radian );
       cur_ang *= cur_drv.direction;
+      shm->cur_angle[shm_id + 14] = shm->cur_angle[shm_id]; // HOT FIX
       shm->cur_angle[shm_id] = cur_ang;
 
       shm->board_vdd[0][shm_id] = (a_rx_obj->dc_volt)*0.001;
@@ -720,6 +818,9 @@ void ethercat_loop (const char *ifname)
       double abs_vel = (a_rx_obj->velocity_actual) * ( cur_drv.abs_count_to_radian );
       cur_abs *= cur_drv.direction;
       abs_vel *= cur_drv.direction;
+      if (shm_id == 9) { // HOT FIX
+        abs_vel = (shm->cur_angle[shm_id] - shm->cur_angle[shm_id + 14])*1000;
+      }
       shm->abs_angle[shm_id] = cur_abs;
       shm->abs_vel[shm_id]   = abs_vel;
 
@@ -802,8 +903,8 @@ void ethercat_loop (const char *ifname)
         //// POSITION CONTROL mode
         if (fabs(diff_ang) > 0.174) { //
           if ((shm_id != 6) && (shm_id != 13)) {
-          fprintf(stderr, "very large difference %d abs:%f ref:%f\n",
-                  shm_id, shm->abs_angle[shm_id], shm->ref_angle[shm_id]);
+          fprintf(stderr, "very large difference joint[%d] abs:%f enc:%f ref:%f\n",
+                  shm_id, shm->abs_angle[shm_id], shm->cur_angle[shm_id], shm->ref_angle[shm_id]);
           exit_with_no(1);
           } else {
 #if 0
@@ -866,8 +967,8 @@ void ethercat_loop (const char *ifname)
 
         if (fabs(diff_ang) > 0.174) { // TODO: error detection
           if ((shm_id != 6) && (shm_id != 13)) {
-          fprintf(stderr, "very large difference %d abs:%f ref:%f\n",
-                  shm_id, shm->abs_angle[shm_id], shm->ref_angle[shm_id]);
+          fprintf(stderr, "very large difference joint[%d] abs:%f enc:%f ref:%f\n",
+                  shm_id, shm->abs_angle[shm_id], shm->cur_angle[shm_id], shm->ref_angle[shm_id]);
           exit(1);
           } else {
 #if 0
@@ -945,7 +1046,7 @@ void ethercat_loop (const char *ifname)
 
 	  cur_drv.integral_value += diff_vel;
 //#define MAX_VEL_INTEGRAL 62.8
-#define MAX_VEL_INTEGRAL 125.6
+#define MAX_VEL_INTEGRAL (125.6 * 2)
 //#define MAX_VEL_INTEGRAL 188.4
 	  if (cur_drv.integral_value >   MAX_VEL_INTEGRAL) cur_drv.integral_value =   MAX_VEL_INTEGRAL;
 	  if (cur_drv.integral_value < - MAX_VEL_INTEGRAL) cur_drv.integral_value = - MAX_VEL_INTEGRAL;
@@ -1094,9 +1195,15 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
 std::string logfilename("shm_log");
 
 void exit_with_no(int exitno) {
+  inOP = false;
   struct timeval tv;
   gettimeofday(&tv, NULL);
   fprintf(stderr, "exit %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
+  //
+  for(int workerid = 2; workerid <= ec_slavecount ; workerid++) {
+    elmo_read_error(workerid, true);
+  }
+  //
   shm_log.save(logfilename);
   exit(exitno);
 }
@@ -1202,7 +1309,7 @@ int main(int argc, char *argv[])
      ethercat_loop(device.c_str());
    } else {
      /* create thread to handle slave error handling in OP */
-     osal_thread_create(&thread1, 128000, (void *) &ecatcheck, (void*) &ctime);
+     //osal_thread_create(&thread1, 128000, (void *) &ecatcheck, (void*) &ctime);
 
      if (start_display) {
        // display thread
