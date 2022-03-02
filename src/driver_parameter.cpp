@@ -78,13 +78,13 @@ bool read_value(YAML::Node &node, std::string &key, std::vector<double> &vec)
     std::string key = #name ;                                           \
     std::vector<int> vec;                                               \
     if ( read_value(node, key, vec) ) {                                 \
-      if (vec.size() != num) {                                          \
+      if (vec.size() != num_of_drv) {                                   \
         std::cerr << "key: " << key << " parameter length (" << vec.size() \
-                  << ") is not equal " << num << std::endl;             \
+                  << ") is not equal " << num_of_drv << std::endl;      \
         return false;                                                   \
       }                                                                 \
-      for(unsigned int i = 0; i < num; i++)                             \
-        params[i].name = vec[i];                                      \
+      for(unsigned int i = 0; i < num_of_drv; i++)                      \
+        params[i].name = vec[i];                                        \
     } else {                                                            \
       std::cerr << "key: " << key << " was not found" << std::endl;     \
       return false;                                                     \
@@ -94,13 +94,13 @@ bool read_value(YAML::Node &node, std::string &key, std::vector<double> &vec)
     std::string key = #name ;                                           \
     std::vector<double> vec;                                            \
     if ( read_value(node, key, vec) ) {                                 \
-      if (vec.size() != num) {                                          \
+      if (vec.size() != num_of_drv) {                                   \
         std::cerr << "key: " << key << " parameter length (" << vec.size() \
-                  << ") is not equal " << num << std::endl;             \
+                  << ") is not equal " << num_of_drv << std::endl;      \
         return false;                                                   \
       }                                                                 \
-      for(unsigned int i = 0; i < num; i++)                             \
-        params[i].name = vec[i];                                      \
+      for(unsigned int i = 0; i < num_of_drv; i++)                      \
+        params[i].name = vec[i];                                        \
     } else {                                                            \
       std::cerr << "key: " << key << " was not found" << std::endl;     \
       return false;                                                     \
@@ -112,13 +112,13 @@ bool parse_node(YAML::Node &node, std::vector<driver_parameter> &params)
   if (!node.IsMap()) {
     return false;
   }
-  unsigned int num = 0;
+  unsigned int num_of_drv = 0;
   {
     std::string key = "number_of_drivers";
     int n;
     if( read_value(node, key, &n) ) {
-      num = n;
-      params.resize(num);
+      num_of_drv = n;
+      params.resize(num_of_drv);
     } else {
       std::cerr << "key: " << key << " was not found" << std::endl;
       return false;
