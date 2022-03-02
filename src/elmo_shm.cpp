@@ -358,12 +358,14 @@ void ethercat_loop (const char *ifname)
 
   //// device settings for all drivers
   //// assume: all workers may be a elmo driver and all elmo driver should be the same settings
+  int configured_driver = 0;
   for(int workerid = 1; workerid <= ec_slavecount ; workerid++) {
     /// can we check is it elmo?
     if(!drv[workerid-1].configured) continue;
 
     if(!ethercat_open) continue;
     ///
+    configured_driver++;
     driver &cur_drv = drv[workerid-1];
     int cur_id = cur_drv.id;
     int shm_id = cur_drv.shm_id;
@@ -396,6 +398,11 @@ void ethercat_loop (const char *ifname)
     ///
     jsk_elmo_PDO_mapping(workerid, rxpdo_set, sizeof(rxpdo_set)/sizeof(uint16_t),
                          txpdo_set, sizeof(txpdo_set)/sizeof(uint16_t));
+  }
+  if (configured_driver != drv_params.size()) {
+    fprintf(stderr, "Missmatch the number of configured drivers() and the expected number of drivers(%d)\n",
+            configured_driver, drv_params.size());
+    exit(4);
   }
 #if 0
   {
@@ -1118,7 +1125,7 @@ void ethercat_loop (const char *ifname)
 #if 0
     if (zero_count > 5000) {
       fprintf(stderr, "many zero count\n");
-      exit(1);
+      exit(2);
     }
 #endif
     //
@@ -1321,7 +1328,7 @@ int main(int argc, char *argv[])
 
        if ( pthread_create( &display_thread, NULL, display_thread_fun, (void *)(&d_args)) ) {
          fprintf(stderr, "pthread_create (display) was filed");
-         exit(1);
+         exit(3);
        }
      }
 
