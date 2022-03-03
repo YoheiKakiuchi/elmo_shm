@@ -400,9 +400,9 @@ void ethercat_loop (const char *ifname)
                          txpdo_set, sizeof(txpdo_set)/sizeof(uint16_t));
   }
   if (configured_driver != drv_params.size()) {
-    fprintf(stderr, "Missmatch the number of configured drivers() and the expected number of drivers(%d)\n",
+    fprintf(stderr, "Missmatch the number of configured drivers(%d) and the expected number of drivers(%d)\n",
             configured_driver, drv_params.size());
-    exit(4);
+    //exit(4);
   }
 #if 0
   {
